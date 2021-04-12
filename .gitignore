@@ -1,0 +1,9 @@
+build/
+devel/
+.vscode/*
+
+*.db
+*.catkin_workspace
+
+!.gitignore
+!.vscode/c_cpp_properties.json
