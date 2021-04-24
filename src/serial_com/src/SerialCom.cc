@@ -44,7 +44,7 @@ SerialCom::SerialCom(){
         ROS_ERROR_STREAM("Open serial port failed.");
         exit(-1);
     }
-    mag_pub = nh.advertise<sensor_msgs::MagneticField>("msg_info", 10);
+    mag_pub = nh.advertise<sensor_msgs::MagneticField>("mag_info", 10);
     imu_pub = nh.advertise<sensor_msgs::Imu>("imu_info", 10);
     uwb_pub = nh.advertise<serial_com::uwb>("uwb_info", 4);
 }
@@ -78,49 +78,37 @@ bool SerialCom::receiveData(
     sensor_msgs::MagneticField& mag,
     serial_com::uwb& uwb
 ) {
-    // 三轴陀螺仪（角加速度） + 三轴加速度（加速度） + 三轴磁场（方向）
+    // 三轴陀螺仪（角加速度） + 三轴加速度（加速度） + 三轴磁场（方向），一次收64字节的包（有些是reserve的位置）
     for (int i = 0; i < 64; i++) {
         tl.buffer[i] = buffer[i];
     }
-    imu.angular_velocity.x = float(tl.packet.angular[0]) / 1000.0;
-    imu.angular_velocity.y = float(tl.packet.angular[1]) / 1000.0;
-    imu.angular_velocity.z = float(tl.packet.angular[2]) / 1000.0;
+    // printf("UWB: %d, %d, %d\n", tl.packet.uwb[0],tl.packet.uwb[1], tl.packet.uwb_angle);
+    // printf("Angle position: %d, %d\n", tl.packet.angles[0], tl.packet.angles[1]);
+    // printf("Angular vel: %d, %d, %d\n", tl.packet.angular[0], tl.packet.angular[1], tl.packet.angular[2]);
+    // 电控角速度是0.1度/s的，所以需要改一下，变成度后转弧度
+    imu.angular_velocity.x = float(tl.packet.angular[0]) / 10 * 0.017453;
+    imu.angular_velocity.y = float(tl.packet.angular[1]) / 10 * 0.017453;
+    imu.angular_velocity.z = float(tl.packet.angular[2]) / 10 * 0.017453;
 
-    imu.linear_acceleration.x = float(tl.packet.accel[0]) / 1000.0;
-    imu.linear_acceleration.y = float(tl.packet.accel[1]) / 1000.0;
-    imu.linear_acceleration.z = float(tl.packet.accel[2]) / 1000.0;
+    /// 加速度
+    printf("Acceleration: %d, %d, %d\n", tl.packet.accel[0], tl.packet.accel[1], tl.packet.accel[2]);
+    imu.linear_acceleration.x = float(tl.packet.accel[0]) / 1000.0 * 9.81;
+    imu.linear_acceleration.y = float(tl.packet.accel[1]) / 1000.0 * 9.81;
+    imu.linear_acceleration.z = float(tl.packet.accel[2]) / 1000.0 * 9.81;
 
     /// 磁力计
+    // printf("Magnetic field: %d, %d, %d\n\n", tl.packet.magneto[0], tl.packet.magneto[1], tl.packet.magneto[2]);
     mag.magnetic_field.x = float(tl.packet.magneto[0]) / 1000.0;
     mag.magnetic_field.y = float(tl.packet.magneto[1]) / 1000.0;
     mag.magnetic_field.z = float(tl.packet.magneto[2]) / 1000.0;
 
-    bool uwb_update = false;
-    for (int i = 0; i < 3; i++) {       // 只要有非0的数据，就能说明uwb给出的数据是更新了的
-        if (std::abs(tl.packet.uwb[i]) > 1e-5) {
-            uwb_update = true;
-            break;
-        }
-    }
-    angle2Quat(0.0, float(tl.packet.angles[0]) / 91.0,
-            float (tl.packet.angles[1]) / 91.0, imu.orientation);
+    angle2Quat(0.0, float(tl.packet.angles[0]) / 182.0,
+            float (tl.packet.angles[1]) / 182.0, imu.orientation);
     
-    if (uwb_update == false) {          // uwb频率10Hz，电控以高频率（160+Hz发送IMU信息时，可能没有UWB信息）
-        uwb.x = 0.0;
-        uwb.y = 0.0;
-        uwb.z = 0.0;
-        uwb.angle = 0.0;                // 没有UWB，无法与云台yaw进行融合（磁力计融合不在此处）
-        return false;
-    }
-    
-    // imu.orientation.x = 0.0;
-    // imu.orientation.y = 0.0;
-    // imu.orientation.z = 0.0;
-    // imu.orientation.w = 0.0;
-    uwb.x = tl.packet.uwb[0];
-    uwb.y = tl.packet.uwb[1];
-    uwb.z = tl.packet.uwb[2];
-    uwb.angle = tl.packet.uwb[3];
+    uwb.x = float(tl.packet.uwb[0]) / 100.0;
+    uwb.y = float(tl.packet.uwb[1]) / 100.0;
+    uwb.z = 0.0;
+    uwb.angle = float(tl.packet.uwb_angle) / 100.0;
     /// @todo 这个应该在UWB correct 函数里面进行融合，只融合特定方向
     return true;
 }
@@ -138,7 +126,7 @@ int SerialCom::serialOK(char *output){
         for(int i = 0; i < 256 && files->d_name[i] > 0; ++i){
             if(i>5){
                 strcat(output, files->d_name);                  // 云台板断电，重新给予权限
-                std::string uwband = "echo \"bfjg\" | sudo -S chmod 777 " + std::string(output);
+                std::string uwband = "echo \"121\" | sudo -S chmod 777 " + std::string(output);
                 system(uwband.c_str());
                 return 0;
             }
@@ -160,8 +148,8 @@ int SerialCom::getDataFromSerial(
             if(res.data.size() < 64)
                 ROS_ERROR_STREAM("There has been a Read Error.\n");
             serial_debug("Data received.\n");
-            uint8_t result[52];
-            for(int i = 0; i< 52 ; ++i)
+            uint8_t result[64];
+            for(int i = 0; i< 64 ; ++i)
                 result[i] = res.data[i];                    //云台发来的数据全部使用
             if (receiveData(result, imu, mag, uwb) == true)
                 return ALL_OK;

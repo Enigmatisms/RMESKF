@@ -18,7 +18,16 @@ public:
 		return this->mag_init_dir_;
 	}
 
+	Eigen::Vector3d getUWBInitialPos() const {
+		return this->uwb_average;
+	}
+
 	bool is_initialized();
+public:
+	double accel_x_mean;
+	double accel_y_mean;
+	double roll_angle;
+	double pitch_angle;
 private:
 
 	int imu_initialize_goal_ = 10;
@@ -39,6 +48,7 @@ private:
 	std::deque<MagDataPtr> mag_buffer_;
 
 	Eigen::Quaterniond mag_init_dir_;		// 在标定 / 初始化之后得到的初始磁偏方向
+	Eigen::Vector3d uwb_average;
 
 	State* state_;
 };

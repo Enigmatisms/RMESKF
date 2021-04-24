@@ -6,6 +6,7 @@
 #include "eskf_localizer/uwb_processor.h"
 #include "eskf_localizer/mag_processor.h"
 
+#include <fstream>
 #include <Eigen/Core>
 
 #include <geometry_msgs/Pose.h>
@@ -19,6 +20,11 @@ class ESKF_Localizer{
 public:
 	ESKF_Localizer(const double am_noise, const double wm_noise,
 			const double ab_noise, const double wb_noise, Eigen::Vector3d I_p_Uwb);
+
+	~ESKF_Localizer() {
+		file.close();
+	}
+
 	void processImuData(ImuDataPtr imu_data);
 	void processUwbData(UwbPositionDataPtr gps_data);
 	void processMagData(MagDataPtr mag_data);
@@ -37,10 +43,13 @@ private:
 	std::unique_ptr<ImuProcessor> imu_processor_;
 	std::unique_ptr<UwbProcessor> uwb_processor_;
 	std::unique_ptr<MagProcessor> mag_processor_;
+	std::ofstream file;
 
 	Eigen::Vector3d uwb_pos;
 	State state_;
 
 	double last_t_;
+	double start_time;
+	bool start_t_set;
 };
 }
