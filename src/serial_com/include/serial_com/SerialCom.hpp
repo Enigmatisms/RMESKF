@@ -21,15 +21,17 @@
 #define MAX_INFO_BYTES 1024*1024
 //#define POSITION					//使用位置式的标签,默认取消，位置式云台会抽搐
 
+// 通信协议 转换：电控将对应数据进行处理（乘以1000之类的），放到packet中，发送buffer。视觉收buffer后用union解包
 union Translate {                   // 52字节 4 * 13
     uint8_t buffer[64];
     struct Packet {
-        float uwb[4];               // 4 * 4 UWB
+        int16_t uwb[2];               // 4 * 4 UWB
+        uint16_t uwb_angle;
         int16_t angles[2];          // 编码器pitch与云台陀螺仪yaw积分 （p y）
         int16_t accel[3];           // 加速度
         int16_t angular[3];         // 角速度
         int16_t magneto[3];         // 磁场
-        uint8_t reserved[26];       // 暂时没有用        
+        uint8_t reserved[36];       // 暂时没有用        
     } packet;
 };
 

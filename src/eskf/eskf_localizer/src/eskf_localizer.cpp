@@ -19,18 +19,41 @@ namespace ESKF_Localization{
 		state_.ab = Eigen::Vector3d::Zero();
 		state_.wb = Eigen::Vector3d::Zero();
 
-		initializer_ = std::make_unique<Initializer>(10,10,10,&state_);
+		initializer_ = std::make_unique<Initializer>(20,20,20,&state_);
 		Eigen::Vector3d g(0,0,-9.81);
 		imu_processor_ = std::make_unique<ImuProcessor>(am_noise,wm_noise,ab_noise,wb_noise,g);
 		uwb_processor_ = std::make_unique<UwbProcessor>(I_p_Uwb);
 		mag_processor_ = std::make_unique<MagProcessor>(0.7*Eigen::Matrix3d::Identity());
 		last_t_ = ros::Time::now().toSec();
+		file.open("/home/xjturm/ESKF/filtered.txt", std::ios::out);
+		start_time = 0.0;
+		start_t_set = false;
 	}
 
 	void ESKF_Localizer::processImuData(ImuDataPtr imu_data){
+		double now_time = std::chrono::system_clock::now().time_since_epoch().count(), interval = 0.0;
+		now_time /= 1e9;
+		if (start_t_set == false) {
+			start_time = now_time; 
+			start_t_set = true;
+		}
+		interval = now_time - start_time;
+		
 		if(!initializer_->is_initialized()){
 			initializer_->Imu_initialize(imu_data);
+			printf("Initializing accel: %f, %f, %f\n", imu_data->accel.x(), imu_data->accel.y(), imu_data->accel.z());
+			file << interval << "," << imu_data->accel.x() << "," << imu_data->accel.y() << "," << imu_data->accel.z() << std::endl;
 			return;
+		}
+		else {
+			Eigen::Vector3d accel = imu_data->accel;
+			accel(0) -= initializer_->accel_x_mean;				// substract bias
+			accel(1) -= initializer_->accel_y_mean;
+			accel(0) *= std::cos(initializer_->pitch_angle);	// projection
+			accel(1) *= std::cos(initializer_->roll_angle);
+			imu_data->accel = accel.eval();
+			printf("Undistorted: %f, %f, %f\n", imu_data->accel.x(), imu_data->accel.y(), imu_data->accel.z());
+			file << interval << "," << imu_data->accel.x() << "," << imu_data->accel.y() << "," << imu_data->accel.z() << std::endl;
 		}
 
 		double t = imu_data->timestamp;
@@ -44,8 +67,10 @@ namespace ESKF_Localization{
 	void ESKF_Localizer::processUwbData(UwbPositionDataPtr uwb_data){
 		if(!initializer_->is_initialized()){
 			initializer_->Uwb_initialize(uwb_data);
+			printf("Not initialized\n");
 			return;
 		}
+		printf("Start correcting sequence.\n");
 		uwb_processor_->Uwb_correct(uwb_data, &state_, uwb_pos);
 	}
 
@@ -55,7 +80,7 @@ namespace ESKF_Localization{
 			return;
 		}
 
-		mag_processor_->Mag_correct(mag_data,&state_);
+		// mag_processor_->Mag_correct(mag_data,&state_);
 	}
 
 	State* ESKF_Localizer::getState(){

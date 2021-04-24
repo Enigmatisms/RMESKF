@@ -4,9 +4,9 @@
           "name": "Linux",        
           "includePath": [
               "${workspaceFolder}/**",
-              "${workspaceFolder}/eskf/eskf_localizer/include/**",
-              "${workspaceFolder}/eskf/ros_wrapper/include/**",
-              "${workspaceFolder}/serial_com/include/**",
+              "${workspaceFolder}/src/eskf/eskf_localizer/include/**",
+              "${workspaceFolder}/src/eskf/ros_wrapper/include/**",
+              "${workspaceFolder}/src/serial_com/include/**",
               "/opt/ros/melodic/include/**",
               "/opt/libtorch/include/**",
               "/opt/libtorch/include/torch/csrc/api/include/**",

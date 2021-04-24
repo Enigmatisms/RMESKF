@@ -13,20 +13,22 @@ ESKFLocalizationWrapper::ESKFLocalizationWrapper(ros::NodeHandle nh)
 	double am_noise, wm_noise, ab_noise, wb_noise;
 	double x, y, z;
 
-	nh.param("am_noise", am_noise, 1e-2);
-	nh.param("wm_noise", wm_noise, 1e-4);
-	nh.param("ab_noise", ab_noise, 1e-6);
-	nh.param("wb_noise", wb_noise, 1e-6);
+	nh.param("am_noise", am_noise, 1.0);
+	nh.param("wm_noise", wm_noise, 0.05);
+	nh.param("ab_noise", ab_noise, 1e-4);
+	nh.param("wb_noise", wb_noise, 1e-4);
 
-	nh.param("I_p_Gps_x", x, 0.0);
-	nh.param("I_p_Gps_y", y, 0.0);
-	nh.param("I_p_Gps_z", z, 0.0);
+	nh.param("I_p_Uwb_x", x, 0.0);
+	nh.param("I_p_Uwb_y", y, 0.0);
+	nh.param("I_p_Uwb_z", z, 0.0);
+	nh.param("filter_ratio", filter_ratio, 0.7);
+	
 
-	const Eigen::Vector3d I_p_Gps(x, y, z);
+	const Eigen::Vector3d I_p_Uwb(x, y, z);
 
 	//initialize eskf_localizer with these parameters
 	eskf_localizer_ = std::make_unique<ESKF_Localization::ESKF_Localizer>(
-		am_noise, wm_noise, ab_noise, wb_noise, I_p_Gps);
+		am_noise, wm_noise, ab_noise, wb_noise, I_p_Uwb);
 
 	imu_sub_ = nh.subscribe("imu_info", 10, &ESKFLocalizationWrapper::ImuCallback, this);
 	uwb_sub_ = nh.subscribe("uwb_info", 4, &ESKFLocalizationWrapper::UwbPositionCallback, this);
@@ -36,20 +38,39 @@ ESKFLocalizationWrapper::ESKFLocalizationWrapper(ros::NodeHandle nh)
 	fused_odom_pub_ = nh.advertise<nav_msgs::Odometry>("/fused_odom", 10);
 	fused_path_pub_ = nh.advertise<nav_msgs::Path>("/fused_path", 10);
 	uwb_path_pub_ = nh.advertise<nav_msgs::Path>("/uwb_path", 10);
+	file.open("/home/xjturm/ESKF/origin.txt", std::ios::out);
+
+	old_accel.setZero();
+	accel_init = false;
+	start_time = 0.0;
 }
 
 ESKFLocalizationWrapper::~ESKFLocalizationWrapper()
 {
+	file.close();
 }
 
 void ESKFLocalizationWrapper::ImuCallback(const sensor_msgs::ImuConstPtr &imu_msg_ptr)
 {
 	ESKF_Localization::ImuDataPtr imu_data_ptr = std::make_shared<ESKF_Localization::ImuData>();
+	double now_time = std::chrono::system_clock::now().time_since_epoch().count(), interval = 0.0;
+	now_time /= 1e9;
 	imu_data_ptr->timestamp = ros::Time::now().toSec();
-	imu_data_ptr->accel << imu_msg_ptr->linear_acceleration.x,
+	if (accel_init == false) {
+		accel_init = true;
+		old_accel << imu_msg_ptr->linear_acceleration.x,
 		imu_msg_ptr->linear_acceleration.y,
-		imu_msg_ptr->linear_acceleration.z;
+		-9.81;
+		start_time = now_time; 
+	}
+	Eigen::Vector3d now_accel = (1 - filter_ratio) * Eigen::Vector3d(imu_msg_ptr->linear_acceleration.x,
+						imu_msg_ptr->linear_acceleration.y, -9.81) + filter_ratio * old_accel;
+	imu_data_ptr->accel = now_accel;
+	old_accel = now_accel.eval();
 
+	printf("Accel Actual: %f, %f, %f\n", imu_msg_ptr->linear_acceleration.x, imu_msg_ptr->linear_acceleration.y, imu_msg_ptr->linear_acceleration.z);
+	interval = now_time - start_time;
+	file << interval << "," << imu_msg_ptr->linear_acceleration.x << "," <<imu_msg_ptr->linear_acceleration.y << "," << imu_msg_ptr->linear_acceleration.z << std::endl;
 	imu_data_ptr->gyro << imu_msg_ptr->angular_velocity.x,
 		imu_msg_ptr->angular_velocity.y,
 		imu_msg_ptr->angular_velocity.z;
@@ -65,6 +86,7 @@ void ESKFLocalizationWrapper::ImuCallback(const sensor_msgs::ImuConstPtr &imu_ms
 /// @todo UWB的角度信息只有一个平面角，尚不清楚如何进行融合
 void ESKFLocalizationWrapper::UwbPositionCallback(const serial_com::uwbConstPtr &uwb_msg_ptr)
 {
+	printf("UWB from serial com: %f, %f, %f\n", uwb_msg_ptr->x, uwb_msg_ptr->y, uwb_msg_ptr->z);
 	ESKF_Localization::UwbPositionDataPtr uwb_data_ptr = std::make_shared<ESKF_Localization::UwbPositionData>();
 	uwb_data_ptr->timestamp = ros::Time::now().toSec();
 	uwb_data_ptr->orient = uwb_msg_ptr->angle;

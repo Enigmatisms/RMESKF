@@ -10,6 +10,7 @@ namespace ESKF_Localization{
 
 UwbProcessor::UwbProcessor(Eigen::Vector3d I_p_Uwb){
 	UwbProcessor::I_p_Uwb_ = I_p_Uwb;
+	init_position_set = false;
 }
 
 /// @todo 此处最好还有一个angle的correct
@@ -31,6 +32,8 @@ void UwbProcessor::Uwb_correct(const UwbPositionDataPtr UwbData, State* state, E
 	Eigen::Matrix3d V;
 	V << 1.5,0,0,0,1.5,0,0,0,4.0;
 
+	printf("State before correction: %f, %f, %f\n", state->G_p_I.x(), state->G_p_I.y(), state->G_p_I.z());
 	ESKF_correct(uwb,h_x,H,V,state);
+	printf("State after correction: %f, %f, %f\n", state->G_p_I.x(), state->G_p_I.y(), state->G_p_I.z());
 }
 }
