@@ -67,8 +67,10 @@ namespace ESKF_Localization{
 	void ESKF_Localizer::processUwbData(UwbPositionDataPtr uwb_data){
 		if(!initializer_->is_initialized()){
 			initializer_->Uwb_initialize(uwb_data);
+			printf("Not initialized\n");
 			return;
 		}
+		printf("Start correcting sequence.\n");
 		uwb_processor_->Uwb_correct(uwb_data, &state_, uwb_pos);
 	}
 

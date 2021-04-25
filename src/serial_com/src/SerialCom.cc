@@ -141,7 +141,7 @@ int SerialCom::serialOK(char *output){
         for(int i = 0; i < 256 && files->d_name[i] > 0; ++i){
             if(i>5){
                 strcat(output, files->d_name);                  // 云台板断电，重新给予权限
-                std::string uwband = "echo \"bfjg\" | sudo -S chmod 777 " + std::string(output);
+                std::string uwband = "echo \"121\" | sudo -S chmod 777 " + std::string(output);
                 system(uwband.c_str());
                 return 0;
             }
