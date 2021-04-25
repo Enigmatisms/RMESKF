@@ -77,11 +77,33 @@ def speedPlot(origin, filtered, fig):
     plt.grid(axis = 'both')
     return fig + 1
 
+def plotAngVels(data, fig):
+    vx = data[::2, 1]
+    vy = data[::2, 2]
+    vz = data[::2, 3]
+    vxf = data[1::2, 1]
+    vyf = data[1::2, 2]
+    vzf = data[1::2, 3]
+    xs = data[::2, 0]
+    plt.figure(fig)
+    plt.subplot(3, 1, 1)
+    plt.plot(xs, vx, c = 'b', label = 'origin')
+    plt.plot(xs, vxf, c = 'r', label = 'filtered')
+    plt.subplot(3, 1, 2)
+    plt.plot(xs, vy, c = 'b', label = 'origin')
+    plt.plot(xs, vyf, c = 'r', label = 'filtered')
+    plt.subplot(3, 1, 3)
+    plt.plot(xs, vz, c = 'b', label = 'origin')
+    plt.plot(xs, vzf, c = 'r', label = 'filtered')
+    return fig + 1
+
 
 if __name__ == "__main__":
     fig = 0
     origin = np.loadtxt("./origin.txt", dtype = float, delimiter = ",")
     filtered = np.loadtxt("./filtered.txt", dtype = float, delimiter = ",")
+    ang_vels = np.loadtxt("./angs.txt", dtype = float, delimiter = ",")
     fig = speedPlot(origin, filtered, fig)
     fig = originAccel(origin, filtered, fig)
+    fig = plotAngVels(ang_vels, fig)
     plt.show()

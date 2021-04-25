@@ -32,7 +32,6 @@ void ImuProcessor::Imu_predict(const ImuDataPtr imu_data, double dt, State* stat
 		Fx.block<3,3>(6,6) = Eigen::AngleAxisd(delta_angle_axis.norm(),delta_angle_axis.normalized()).toRotationMatrix().transpose();
 	}else{
 		Fx.block<3,3>(6,6) = Eigen::Matrix3d::Identity();
-
 	}
 
 	Fx.block<3,3>(6,12) = -Eigen::Matrix3d::Identity()*dt;

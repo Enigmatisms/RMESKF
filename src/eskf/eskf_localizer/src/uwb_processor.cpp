@@ -30,7 +30,7 @@ void UwbProcessor::Uwb_correct(const UwbPositionDataPtr UwbData, State* state, E
 	H.block<3,3>(0,6) = -state->G_R_I * hat(I_p_Uwb_);
 
 	Eigen::Matrix3d V;
-	V << 1.5,0,0,0,1.5,0,0,0,4.0;
+	V << 0.1,0,0,0,0.1,0,0,0,0.05;
 
 	printf("State before correction: %f, %f, %f\n", state->G_p_I.x(), state->G_p_I.y(), state->G_p_I.z());
 	ESKF_correct(uwb,h_x,H,V,state);

@@ -44,9 +44,12 @@ SerialCom::SerialCom(){
         ROS_ERROR_STREAM("Open serial port failed.");
         exit(-1);
     }
-    mag_pub = nh.advertise<sensor_msgs::MagneticField>("mag_info", 10);
-    imu_pub = nh.advertise<sensor_msgs::Imu>("imu_info", 10);
-    uwb_pub = nh.advertise<serial_com::uwb>("uwb_info", 4);
+    mag_pub = nh.advertise<sensor_msgs::MagneticField>("mag_info", 8);
+    imu_pub = nh.advertise<sensor_msgs::Imu>("imu_info", 8);
+    uwb_pub = nh.advertise<serial_com::uwb>("uwb_info", 8);
+    old_x = 0;
+    old_y = 0;
+    old_ang = 0;
 }
 
 SerialCom::~SerialCom(){
@@ -60,14 +63,10 @@ void SerialCom::sendGimbalInfo(){
     sensor_msgs::Imu imu;
     sensor_msgs::MagneticField mag;
     int serial_flag = getDataFromSerial(imu, mag, uwb);
-    if (serial_flag == ALL_OK) {        // all information acquired.
-        imu_pub.publish(imu);
-        mag_pub.publish(mag);
+    imu_pub.publish(imu);
+    mag_pub.publish(mag);
+    if (serial_flag == ALL_OK) {
         uwb_pub.publish(uwb);
-    }
-    else if (serial_flag == NO_UWB) {   // no uwb position
-        imu_pub.publish(imu);
-        mag_pub.publish(mag);
     }
 }
 
@@ -102,13 +101,29 @@ bool SerialCom::receiveData(
     mag.magnetic_field.y = float(tl.packet.magneto[1]) / 1000.0;
     mag.magnetic_field.z = float(tl.packet.magneto[2]) / 1000.0;
 
-    angle2Quat(0.0, float(tl.packet.angles[0]) / 182.0,
+    angle2Quat(0.0, 0.0,
             float (tl.packet.angles[1]) / 182.0, imu.orientation);
-    
-    uwb.x = float(tl.packet.uwb[0]) / 100.0;
-    uwb.y = float(tl.packet.uwb[1]) / 100.0;
+    // imu.orientation.w = 0;
+    // imu.orientation.w = 0;
+    // imu.orientation.w = 0;
+    // imu.orientation.w = 0;
+
+    int16_t now_x = tl.packet.uwb[0], now_y = tl.packet.uwb[1];
+    uint16_t now_ang = tl.packet.uwb_angle;
+    if (old_x == now_x && old_y == now_y && old_ang == now_ang) {       // no uwb
+        uwb.x = 0.0;
+        uwb.y = 0.0;
+        uwb.z = 0.0;
+        uwb.angle = 0.0;
+        return false;
+    }
+    uwb.x = float(now_x) / 100.0;
+    uwb.y = float(now_y) / 100.0;
     uwb.z = 0.0;
-    uwb.angle = float(tl.packet.uwb_angle) / 100.0;
+    uwb.angle = float(now_ang) / 100.0;
+    old_x = now_x;
+    old_y = now_y;
+    old_ang = now_ang;
     /// @todo 这个应该在UWB correct 函数里面进行融合，只融合特定方向
     return true;
 }

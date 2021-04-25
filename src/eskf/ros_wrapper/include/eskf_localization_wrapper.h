@@ -31,6 +31,7 @@ private:
 	ros::Publisher uwb_path_pub_;
 	ros::Publisher fused_odom_pub_;
 	std::ofstream file;
+	std::ofstream ang_file;
 
     nav_msgs::Path ros_path_;
 	nav_msgs::Path uwb_path_;
@@ -44,7 +45,9 @@ private:
 	void addUWB2Path(Eigen::Vector3d uwb_pos);
 	void publishState(bool pub_uwb = false);
 private:
-	bool accel_init;
-	double filter_ratio;
+	bool old_data_init;
+	double a_filter_ratio;
+	double w_filter_ratio;
 	double start_time;
+	double old_angvel;			// only filter z (vertical) axis
 };

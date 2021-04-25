@@ -1,5 +1,10 @@
 #ifndef _SERIAL_COM_HPP
 #define _SERIAL_COM_HPP
+
+#define CHANGE_THRESHOLD 1
+
+#include <chrono>
+#include <fstream>
 #include <iostream>
 #include <unistd.h>
 #include <dirent.h>
@@ -67,5 +72,10 @@ private:
     int serialOK(char *output);                                     //查找可用设备，查找到将返回0
 private:
     Translate tl;
+    std::ofstream file;
+
+    int16_t old_x;
+    int16_t old_y;
+    uint16_t old_ang;
 };
 #endif //_SERIAL_COM_HPP
