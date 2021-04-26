@@ -72,7 +72,18 @@ private:
     int serialOK(char *output);                                     //查找可用设备，查找到将返回0
 private:
     Translate tl;
-    std::ofstream file;
+
+    std::ofstream uwb_freq;
+    std::ofstream ser_freq;
+
+    bool uwb_init;
+    bool ser_init;
+
+    double uwb_start_time;
+    double ser_start_time;
+
+    double uwb_cnt;
+    double ser_cnt;
 
     int16_t old_x;
     int16_t old_y;
