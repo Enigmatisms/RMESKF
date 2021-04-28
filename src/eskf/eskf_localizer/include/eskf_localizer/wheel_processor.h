@@ -5,13 +5,12 @@
 
 namespace ESKF_Localization{
 
-class MagProcessor{
+class WheelProcessor{
 
 public:
-	MagProcessor(Eigen::Matrix3d V);
-	void Mag_correct(const MagDataPtr MagData, State* state);
+	WheelProcessor(Eigen::Matrix3d V);
+	void Wheel_correct(const WheelDataPtr MagData, State* state);
 private:
 	Eigen::Matrix3d V_;				//covariance
 };
-
 }

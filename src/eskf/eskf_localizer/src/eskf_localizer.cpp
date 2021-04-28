@@ -23,9 +23,9 @@ namespace ESKF_Localization{
 		Eigen::Vector3d g(0,0,-9.81);
 		imu_processor_ = std::make_unique<ImuProcessor>(am_noise,wm_noise,ab_noise,wb_noise,g);
 		uwb_processor_ = std::make_unique<UwbProcessor>(I_p_Uwb);
-		mag_processor_ = std::make_unique<MagProcessor>(0.7*Eigen::Matrix3d::Identity());
+		wh_processor_ = std::make_unique<WheelProcessor>(0.7 * Eigen::Matrix3d::Identity());
 		last_t_ = ros::Time::now().toSec();
-		file.open("/home/xjturm/ESKF/filtered.txt", std::ios::out);
+		file.open("/home/sentinel/ESKF/filtered.txt", std::ios::out);
 		start_time = 0.0;
 		start_t_set = false;
 	}
@@ -74,13 +74,12 @@ namespace ESKF_Localization{
 		uwb_processor_->Uwb_correct(uwb_data, &state_, uwb_pos);
 	}
 
-	void ESKF_Localizer::processMagData(MagDataPtr mag_data){
+	void ESKF_Localizer::processWheelData(WheelDataPtr wh_data){
 		if(!initializer_->is_initialized()){
-			initializer_->Mag_initialize(mag_data);
+			initializer_->Wheel_initialize(wh_data);
 			return;
 		}
-
-		// mag_processor_->Mag_correct(mag_data,&state_);
+		wh_processor_->Wheel_correct(wh_data, &state_);
 	}
 
 	State* ESKF_Localizer::getState(){

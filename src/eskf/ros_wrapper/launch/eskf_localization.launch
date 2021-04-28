@@ -1,5 +1,5 @@
 <launch>
-    <param name="am_noise"      type="double" value="2.0" />
+    <param name="am_noise"      type="double" value="20.0" />
     <param name="wm_noise"      type="double" value="0.04" />
     <param name="ab_noise"  	type="double" value="0.2" />
     <param name="wb_noise" 		type="double" value="1e-3" />

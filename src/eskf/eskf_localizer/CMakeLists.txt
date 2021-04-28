@@ -25,7 +25,7 @@ add_library(eskf_localizer_lib
   src/eskf.cpp
   src/imu_processor.cpp
   src/uwb_processor.cpp
-  src/mag_processor.cpp
+  src/wheel_processor.cpp
   src/initializer.cpp
 )
 

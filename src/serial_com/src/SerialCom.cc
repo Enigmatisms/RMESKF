@@ -44,8 +44,8 @@ SerialCom::SerialCom(){
         ROS_ERROR_STREAM("Open serial port failed.");
         exit(-1);
     }
-    mag_pub = nh.advertise<sensor_msgs::MagneticField>("mag_info", 8);
     imu_pub = nh.advertise<sensor_msgs::Imu>("imu_info", 8);
+    wheel_pub = nh.advertise<serial_com::chassis>("wheel_info", 8);
     uwb_pub = nh.advertise<serial_com::uwb>("uwb_info", 8);
     old_x = 0;
     old_y = 0;
@@ -60,11 +60,11 @@ SerialCom::~SerialCom(){
 //此函数是subscriber的回调函数
 void SerialCom::sendGimbalInfo(){
     serial_com::uwb uwb;
+    serial_com::chassis wh;
     sensor_msgs::Imu imu;
-    sensor_msgs::MagneticField mag;
-    int serial_flag = getDataFromSerial(imu, mag, uwb);
+    int serial_flag = getDataFromSerial(imu, wh, uwb);
     imu_pub.publish(imu);
-    mag_pub.publish(mag);
+    wheel_pub.publish(wh);
     if (serial_flag == ALL_OK) {
         uwb_pub.publish(uwb);
     }
@@ -74,7 +74,7 @@ void SerialCom::sendGimbalInfo(){
 bool SerialCom::receiveData(
     const uint8_t *buffer,
     sensor_msgs::Imu& imu,
-    sensor_msgs::MagneticField& mag,
+    serial_com::chassis& wh,
     serial_com::uwb& uwb
 ) {
     // 三轴陀螺仪（角加速度） + 三轴加速度（加速度） + 三轴磁场（方向），一次收64字节的包（有些是reserve的位置）
@@ -95,18 +95,15 @@ bool SerialCom::receiveData(
     imu.linear_acceleration.y = float(tl.packet.accel[1]) / 1000.0 * 9.81;
     imu.linear_acceleration.z = float(tl.packet.accel[2]) / 1000.0 * 9.81;
 
-    /// 磁力计
+    /// 轮速，从右下角开始顺时针1 2 3 4
     // printf("Magnetic field: %d, %d, %d\n\n", tl.packet.magneto[0], tl.packet.magneto[1], tl.packet.magneto[2]);
-    mag.magnetic_field.x = float(tl.packet.magneto[0]) / 1000.0;
-    mag.magnetic_field.y = float(tl.packet.magneto[1]) / 1000.0;
-    mag.magnetic_field.z = float(tl.packet.magneto[2]) / 1000.0;
+    wh.v1 = float(tl.packet.wheels[0]) / 1000.0;
+    wh.v2 = float(tl.packet.wheels[1]) / 1000.0;
+    wh.v3 = float(tl.packet.wheels[2]) / 1000.0;
+    wh.v4 = float(tl.packet.wheels[3]) / 1000.0;
+    wh.yaw_angle = float(tl.packet.relative_angle) / 10 * 0.017453;     // 应该转化为弧度
 
-    angle2Quat(0.0, 0.0,
-            float (tl.packet.angles[1]) / 182.0, imu.orientation);
-    // imu.orientation.w = 0;
-    // imu.orientation.w = 0;
-    // imu.orientation.w = 0;
-    // imu.orientation.w = 0;
+    angle2Quat(0.0, 0.0, float (tl.packet.angles[1]) / 182.0, imu.orientation);      // 只需要收yaw
 
     int16_t now_x = tl.packet.uwb[0], now_y = tl.packet.uwb[1];
     uint16_t now_ang = tl.packet.uwb_angle;
@@ -120,11 +117,10 @@ bool SerialCom::receiveData(
     uwb.x = float(now_x) / 100.0;
     uwb.y = float(now_y) / 100.0;
     uwb.z = 0.0;
-    uwb.angle = float(now_ang) / 100.0;
+    uwb.angle = float(now_ang) / 100.0;                                 // 需要融合它了
     old_x = now_x;
     old_y = now_y;
     old_ang = now_ang;
-    /// @todo 这个应该在UWB correct 函数里面进行融合，只融合特定方向
     return true;
 }
 
@@ -152,7 +148,7 @@ int SerialCom::serialOK(char *output){
 
 int SerialCom::getDataFromSerial(
     sensor_msgs::Imu& imu,
-    sensor_msgs::MagneticField& mag,
+    serial_com::chassis& wh,
     serial_com::uwb& uwb)
 {  //输出是两个float值+一个状态码
     if(ser.waitReadable()){                                    //缓冲区内有信息                                    
@@ -166,7 +162,7 @@ int SerialCom::getDataFromSerial(
             uint8_t result[64];
             for(int i = 0; i< 64 ; ++i)
                 result[i] = res.data[i];                    //云台发来的数据全部使用
-            if (receiveData(result, imu, mag, uwb) == true)
+            if (receiveData(result, imu, wh, uwb) == true)
                 return ALL_OK;
             return NO_UWB;
         }

@@ -18,18 +18,19 @@ struct ImuData{
 using ImuDataPtr = std::shared_ptr<ImuData>;
 
 struct UwbPositionData{
-	double timestamp;			//Unit: Seconds
+	double timestamp;			// Unit: Seconds
 	double orient;				// Unknown
 	Eigen::Vector3d z;			// 10Hz observation
 };
 using UwbPositionDataPtr = std::shared_ptr<UwbPositionData>;
 
-struct MagData{
-	double timestamp;			//Unit: Seconds
-
-	Eigen::Vector3d mag;		//Unit: uT
+// 轮速
+struct WheelData{
+	double timestamp;			// Unit: Seconds
+	double yaw_angle;			// From encoder: the relative angle between chassis and pan-tilt
+	Eigen::Vector4d wheel;		// Unit: m/s
 };
-using MagDataPtr = std::shared_ptr<MagData>;
+using WheelDataPtr = std::shared_ptr<WheelData>;
 
 struct State{
 	double timestamp;
@@ -40,9 +41,6 @@ struct State{
 	Eigen::Matrix3d G_R_I;			//Rotation from IMU frame(I) to global frame(G)
 	Eigen::Vector3d ab;				//Accelerometer bias
 	Eigen::Vector3d wb;				//Gyroscope bias
-
-	Eigen::Vector3d m_ref;
-	//magnetic field reference
 
 	Eigen::Matrix<double,15,15> P;	//Covariance of the error state
 };

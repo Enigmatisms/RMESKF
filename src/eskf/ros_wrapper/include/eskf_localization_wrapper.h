@@ -20,12 +20,12 @@ public:
 
     void ImuCallback(const sensor_msgs::ImuConstPtr& imu_msg_ptr);
     void UwbPositionCallback(const serial_com::uwbConstPtr& uwb_msg_ptr);
-    void MagCallback(const sensor_msgs::MagneticFieldConstPtr& mag_msg_ptr);
+    void WheelCallback(const serial_com::chassisConstPtr& wh_msg_ptr);
 
 private:
 	ros::Subscriber imu_sub_;
 	ros::Subscriber uwb_sub_;
-	ros::Subscriber mag_sub_;
+	ros::Subscriber wheel_sub_;
 	ros::Publisher fused_pose_pub_;
 	ros::Publisher fused_path_pub_;
 	ros::Publisher uwb_path_pub_;

@@ -5,6 +5,8 @@
 
 #include <ros/console.h>
 
+// 个人倾向于，电控角度积分是状态量，但是初始角度需要UWB提供的角度
+
 namespace ESKF_Localization{
 
 	void ESKF_update_nominal(ImuDataPtr imu_data,double dt, State* state, Eigen::Vector3d g){
@@ -14,33 +16,19 @@ namespace ESKF_Localization{
 		state->G_p_I = old_state.G_p_I + dt * old_state.G_v_I + dt2_2 * (old_state.G_R_I * (imu_data->accel - old_state.ab) + g);
 		state->G_v_I = old_state.G_v_I + dt * (old_state.G_R_I * (imu_data->accel - old_state.ab) + g);
 
-		if (imu_data->quat.norm() > 1e-6 && imu_data->last_quat.norm() > 1e-6){
-			ROS_INFO("Updating orientation by quaternion");
-			//quaternion valid, update orientation according to delta quaternion
-			Eigen::Matrix3d d_rot(imu_data->last_quat.inverse() * imu_data->quat);
-			state->G_R_I = old_state.G_R_I * d_rot;
-			const Eigen::Vector3d d_theta = (- old_state.wb) * dt;
-			if (d_theta.norm() >= 1e-12){
-				Eigen::AngleAxisd d_rot2(d_theta.norm(),d_theta.normalized());
-				state->G_R_I *= d_rot2.toRotationMatrix();
-			}
-		}else{
-			// 如果没有imu的指向信息，就使用陀螺仪进行解算
-			// 也就是说，有三个轴的朝向（UWB / gyro角速度 / 磁力计速度观测），本身就可以做融合
-			const Eigen::Vector3d d_theta = (imu_data->gyro - old_state.wb) * dt;
-			if (d_theta.norm() >= 1e-12){ 
-				Eigen::AngleAxisd d_rot(d_theta.norm(),d_theta.normalized());
-				state->G_R_I = old_state.G_R_I * d_rot.toRotationMatrix();
-			}
+		ROS_INFO("Updating orientation by quaternion");
+		// quaternion valid, update orientation according to delta quaternion
+		// 默认电控会传送IMU积分角度
+		Eigen::Matrix3d d_rot(imu_data->last_quat.conjugate() * imu_data->quat);
+		state->G_R_I = old_state.G_R_I * d_rot;
+		const Eigen::Vector3d d_theta = (- old_state.wb) * dt;
+		if (d_theta.norm() >= 1e-12){
+			Eigen::AngleAxisd d_rot2(d_theta.norm(),d_theta.normalized());
+			state->G_R_I *= d_rot2.toRotationMatrix();
 		}
 
-		if(imu_data->quat.norm() != 0){
-			//current quaternion valid, haven't got last quaternion.
-			imu_data->last_quat = imu_data->quat;
-		}
-
-		//state->ab = old_state.ab;
-		//state->wb = old_state.wb;
+		//current quaternion valid, haven't got last quaternion.
+		imu_data->last_quat = imu_data->quat;
 	}
 
 	void ESKF_predict(Eigen::MatrixXd Fx, Eigen::MatrixXd Q, State* state){

@@ -4,7 +4,7 @@
 #include "eskf_localizer/initializer.h"
 #include "eskf_localizer/imu_processor.h"
 #include "eskf_localizer/uwb_processor.h"
-#include "eskf_localizer/mag_processor.h"
+#include "eskf_localizer/wheel_processor.h"
 
 #include <fstream>
 #include <Eigen/Core>
@@ -27,22 +27,22 @@ public:
 
 	void processImuData(ImuDataPtr imu_data);
 	void processUwbData(UwbPositionDataPtr gps_data);
-	void processMagData(MagDataPtr mag_data);
+	void processWheelData(WheelDataPtr wh_data);
 
 	State* getState();
 	Eigen::Vector3d getUWBPos() const;
 	geometry_msgs::Pose getFusedPose();
 	nav_msgs::Odometry getFusedOdometry();
 
-	Eigen::Quaterniond getMagInitDir() const {
-		return initializer_->getMagInitDir();
+	Eigen::Vector4d getWheelInitBias() const {
+		return initializer_->getWheelInitialBias();
 	}
 private:
 
 	std::unique_ptr<Initializer> initializer_;
 	std::unique_ptr<ImuProcessor> imu_processor_;
 	std::unique_ptr<UwbProcessor> uwb_processor_;
-	std::unique_ptr<MagProcessor> mag_processor_;
+	std::unique_ptr<WheelProcessor> wh_processor_;
 	std::ofstream file;
 
 	Eigen::Vector3d uwb_pos;

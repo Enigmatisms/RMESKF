@@ -33,15 +33,14 @@ ESKFLocalizationWrapper::ESKFLocalizationWrapper(ros::NodeHandle nh)
 
 	imu_sub_ = nh.subscribe("imu_info", 8, &ESKFLocalizationWrapper::ImuCallback, this);
 	uwb_sub_ = nh.subscribe("uwb_info", 8, &ESKFLocalizationWrapper::UwbPositionCallback, this);
-	mag_sub_ = nh.subscribe("mag_info", 8, &ESKFLocalizationWrapper::MagCallback, this);
+	wheel_sub_ = nh.subscribe("wheel_info", 8, &ESKFLocalizationWrapper::WheelCallback, this);
 
 	fused_pose_pub_ = nh.advertise<geometry_msgs::Pose>("/fused_pose", 8);
-	// fused_odom_pub_ = nh.advertise<nav_msgs::Odometry>("/fused_odom", 10);
 	fused_path_pub_ = nh.advertise<nav_msgs::Path>("/fused_path", 8);
 	uwb_path_pub_ = nh.advertise<nav_msgs::Path>("/uwb_path", 8);
 
-	file.open("/home/xjturm/ESKF/origin.txt", std::ios::out);
-    ang_file.open("/home/xjturm/ESKF/angs.txt", std::ios::out);
+	file.open("/home/sentinel/ESKF/origin.txt", std::ios::out);
+    ang_file.open("/home/sentinel/ESKF/angs.txt", std::ios::out);
 
 	old_accel.setZero();
 	old_data_init = false;
@@ -77,18 +76,14 @@ void ESKFLocalizationWrapper::ImuCallback(const sensor_msgs::ImuConstPtr &imu_ms
 	interval = now_time - start_time;
 	file << interval << "," << imu_msg_ptr->linear_acceleration.x << "," <<imu_msg_ptr->linear_acceleration.y << "," << imu_msg_ptr->linear_acceleration.z << std::endl;
 	ang_file << interval << "," << imu_msg_ptr->angular_velocity.x << "," << imu_msg_ptr->angular_velocity.y << "," << imu_msg_ptr->angular_velocity.z << std::endl;
-	imu_data_ptr->gyro << imu_msg_ptr->angular_velocity.x, imu_msg_ptr->angular_velocity.y, imu_msg_ptr->angular_velocity.z * (1 - w_filter_ratio) + w_filter_ratio * old_angvel;
+	imu_data_ptr->gyro << 0, 0, imu_msg_ptr->angular_velocity.z * (1 - w_filter_ratio) + w_filter_ratio * old_angvel;
 	old_angvel = imu_data_ptr->gyro.z();
 	ang_file << interval << "," << imu_data_ptr->gyro.x() << "," << imu_data_ptr->gyro.y() << "," << imu_data_ptr->gyro.z() << std::endl;
 
-	imu_data_ptr->quat = Eigen::Quaterniond(0.0,
-											0.0,
-											0.0,
-											0.0);	
-	// imu_data_ptr->quat = Eigen::Quaterniond(imu_msg_ptr->orientation.w,
-	// 										imu_msg_ptr->orientation.x,
-	// 										imu_msg_ptr->orientation.y,
-	// 										imu_msg_ptr->orientation.z);
+	imu_data_ptr->quat = Eigen::Quaterniond(imu_msg_ptr->orientation.w,
+											imu_msg_ptr->orientation.x,
+											imu_msg_ptr->orientation.y,
+											imu_msg_ptr->orientation.z);
 	eskf_localizer_->processImuData(imu_data_ptr);
 	publishState();
 }
@@ -107,16 +102,15 @@ void ESKFLocalizationWrapper::UwbPositionCallback(const serial_com::uwbConstPtr 
 	publishState(true);
 }
 
-void ESKFLocalizationWrapper::MagCallback(const sensor_msgs::MagneticFieldConstPtr &mag_msg_ptr)
+void ESKFLocalizationWrapper::WheelCallback(const serial_com::chassisConstPtr& wh_msg_ptr)
 {
-	ESKF_Localization::MagDataPtr mag_data_ptr = std::make_shared<ESKF_Localization::MagData>();
-	mag_data_ptr->timestamp = ros::Time::now().toSec();
+	ESKF_Localization::WheelDataPtr wh_data_ptr = std::make_shared<ESKF_Localization::WheelData>();
+	wh_data_ptr->timestamp = ros::Time::now().toSec();
 
-	mag_data_ptr->mag << mag_msg_ptr->magnetic_field.x,
-		mag_msg_ptr->magnetic_field.y,
-		mag_msg_ptr->magnetic_field.z;
+	wh_data_ptr->wheel << wh_msg_ptr->v1, wh_msg_ptr->v2, wh_msg_ptr->v3, wh_msg_ptr->v4;
+	wh_data_ptr->yaw_angle = wh_msg_ptr->yaw_angle;
 
-	eskf_localizer_->processMagData(mag_data_ptr);
+	eskf_localizer_->processWheelData(wh_data_ptr);
 	publishState();
 }
 
@@ -165,7 +159,6 @@ void ESKFLocalizationWrapper::publishState(bool pub_uwb)
 {
 	//publish fused states
 	fused_pose_pub_.publish(eskf_localizer_->getFusedPose());
-	// fused_odom_pub_.publish(eskf_localizer_->getFusedOdometry());
 	addStateToPath(eskf_localizer_->getState());
 	fused_path_pub_.publish(ros_path_);
 

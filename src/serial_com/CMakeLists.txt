@@ -27,6 +27,7 @@ include_directories(
   ## Generate messages in the 'msg' folder
 add_message_files(FILES
   uwb.msg
+  chassis.msg
 )
 
 ## Generate added messages and services with any dependencies listed here

@@ -13,8 +13,8 @@
 #include <serial/serial.h>
 #include <std_msgs/String.h>
 #include <sensor_msgs/Imu.h>
-#include <sensor_msgs/MagneticField.h>
 #include "serial_com/uwb.h"
+#include "serial_com/chassis.h"
 // #define SERIAL_DEBUG
 #ifdef SERIAL_DEBUG
     #define serial_debug printf
@@ -36,7 +36,11 @@ union Translate {                   // 52字节 4 * 13
         int16_t accel[3];           // 加速度
         int16_t angular[3];         // 角速度
         int16_t magneto[3];         // 磁场
-        uint8_t reserved[36];       // 暂时没有用        
+
+        int16_t wheels[4];          // 四个轮的轮速
+        int16_t relative_angle;     // 云台相对于底盘的yaw
+
+        uint8_t reserved[26];       // 暂时没有用        
     } packet;
 };
 
@@ -45,7 +49,7 @@ public:
     SerialCom();                                    //构造函数，在此打开串口
     ~SerialCom();                                   //析构
     ros::NodeHandle nh;                             //节点管理器
-    ros::Publisher mag_pub;                         // 假设所有信息都是最新的，有用的
+    ros::Publisher wheel_pub;                         // 假设所有信息都是最新的，有用的
     ros::Publisher imu_pub;
     ros::Publisher uwb_pub;                         // 视觉端先不考虑 uwb数据重复的事情    
     serial::Serial ser;                             
@@ -58,14 +62,14 @@ public:
 private:
     int getDataFromSerial(
         sensor_msgs::Imu& imu,
-        sensor_msgs::MagneticField& mag,
+        serial_com::chassis& wh,
         serial_com::uwb& uwb
     );
 
     bool receiveData(
         const uint8_t *buffer,
         sensor_msgs::Imu& imu,
-        sensor_msgs::MagneticField& mag,
+        serial_com::chassis& wh,
         serial_com::uwb& uwb
     );    
 
