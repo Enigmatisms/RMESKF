@@ -50,10 +50,27 @@ SerialCom::SerialCom(){
     old_x = 0;
     old_y = 0;
     old_ang = 0;
+
+    uwb_cnt = 0;
+    ser_cnt = 0;
+    uwb_init = false;
+    ser_init = false;
+    uwb_start_time = 0.0;
+    ser_start_time = 0.0;
+
+    uwb_freq.open("/home/xjturm/ESKF/uwb.txt", std::ios::out);
+    ser_freq.open("/home/xjturm/ESKF/ser.txt", std::ios::out);
+
 }
 
 SerialCom::~SerialCom(){
     ser.close();
+    double uwb_interval = (std::chrono::system_clock::now().time_since_epoch().count() / 1e9 - uwb_start_time) / uwb_cnt;
+    double ser_interval = (std::chrono::system_clock::now().time_since_epoch().count() / 1e9 - ser_start_time) / ser_cnt;
+    uwb_freq << uwb_interval << std::endl;
+    ser_freq << ser_interval << std::endl;
+    uwb_freq.close();
+    ser_freq.close();
 }
 
 //串口收发数据测试
@@ -62,12 +79,31 @@ void SerialCom::sendGimbalInfo(){
     serial_com::uwb uwb;
     serial_com::chassis wh;
     sensor_msgs::Imu imu;
+<<<<<<< HEAD
     int serial_flag = getDataFromSerial(imu, wh, uwb);
+=======
+    sensor_msgs::MagneticField mag;
+    int serial_flag = getDataFromSerial(imu, mag, uwb);
+    if (ser_init == false) {
+        ser_start_time = std::chrono::system_clock::now().time_since_epoch().count() / 1e9;
+        ser_init = true;
+    }
+    double ser_interval = std::chrono::system_clock::now().time_since_epoch().count() / 1e9 - ser_start_time;
+    ser_freq << ser_interval << std::endl;
+>>>>>>> 642c8cbda8418041d507cef869a20e3bc865519a
     imu_pub.publish(imu);
     wheel_pub.publish(wh);
     if (serial_flag == ALL_OK) {
+        if (uwb_init == false) {
+            uwb_start_time = std::chrono::system_clock::now().time_since_epoch().count() / 1e9;
+            uwb_init = true;
+        }
+        uwb_cnt ++;
+        double uwb_interval = std::chrono::system_clock::now().time_since_epoch().count() / 1e9 - uwb_start_time;
+        uwb_freq << uwb_interval << std::endl;
         uwb_pub.publish(uwb);
     }
+    ser_cnt ++;
 }
 
 //从串口接收数据
@@ -90,7 +126,7 @@ bool SerialCom::receiveData(
     imu.angular_velocity.z = float(tl.packet.angular[2]) / 10 * 0.017453;
 
     /// 加速度
-    printf("Acceleration: %d, %d, %d\n", tl.packet.accel[0], tl.packet.accel[1], tl.packet.accel[2]);
+    // printf("Acceleration: %d, %d, %d\n", tl.packet.accel[0], tl.packet.accel[1], tl.packet.accel[2]);
     imu.linear_acceleration.x = float(tl.packet.accel[0]) / 1000.0 * 9.81;
     imu.linear_acceleration.y = float(tl.packet.accel[1]) / 1000.0 * 9.81;
     imu.linear_acceleration.z = float(tl.packet.accel[2]) / 1000.0 * 9.81;
@@ -137,7 +173,7 @@ int SerialCom::serialOK(char *output){
         for(int i = 0; i < 256 && files->d_name[i] > 0; ++i){
             if(i>5){
                 strcat(output, files->d_name);                  // 云台板断电，重新给予权限
-                std::string uwband = "echo \"121\" | sudo -S chmod 777 " + std::string(output);
+                std::string uwband = "echo \"bfjg\" | sudo -S chmod 777 " + std::string(output);
                 system(uwband.c_str());
                 return 0;
             }
