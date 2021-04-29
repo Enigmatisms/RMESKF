@@ -30,6 +30,15 @@ namespace ESKF_Localization{
 		start_t_set = false;
 	}
 
+	void ESKF_Localizer::reset() {
+		state_.G_p_I = Eigen::Vector3d::Zero();
+		state_.G_v_I = Eigen::Vector3d::Zero();
+		state_.G_R_I = Eigen::Matrix3d::Identity();
+		state_.ab = Eigen::Vector3d::Zero();
+		state_.wb = Eigen::Vector3d::Zero();
+		initializer_->reset(&state_);
+	}
+
 	void ESKF_Localizer::processImuData(ImuDataPtr imu_data){
 		double now_time = std::chrono::system_clock::now().time_since_epoch().count(), interval = 0.0;
 		now_time /= 1e9;
@@ -66,11 +75,10 @@ namespace ESKF_Localization{
 
 	void ESKF_Localizer::processUwbData(UwbPositionDataPtr uwb_data){
 		if(!initializer_->is_initialized()){
-			initializer_->Uwb_initialize(uwb_data);
+			initializer_->Uwb_initialize(uwb_data, &state_);
 			printf("Not initialized\n");
 			return;
 		}
-		printf("Start correcting sequence.\n");
 		uwb_processor_->Uwb_correct(uwb_data, &state_, uwb_pos);
 	}
 
@@ -78,6 +86,9 @@ namespace ESKF_Localization{
 		if(!initializer_->is_initialized()){
 			initializer_->Wheel_initialize(wh_data);
 			return;
+		}
+		else {
+			wh_data->wheel -= initializer_->getWheelInitialBias();			// 轮速可能有的初始偏置
 		}
 		wh_processor_->Wheel_correct(wh_data, &state_);
 	}

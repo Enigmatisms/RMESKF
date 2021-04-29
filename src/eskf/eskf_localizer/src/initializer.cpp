@@ -12,28 +12,40 @@ Initializer::Initializer(int imu_initialize_goal, int uwb_initialize_goal,int wh
 	imu_initialize_goal_ = imu_initialize_goal;
 	uwb_initialize_goal_ = uwb_initialize_goal;
 	wheel_initialize_goal_ = wheel_initialize_goal;
-	state_ = state;
 	uwb_average.setZero();
+	reset(state);
+}
 
-	//initial value of P
-	state->P.block<3,3>(0,0) = 10.0 * Eigen::Matrix3d::Identity();		//position cov
-	state->P.block<3,3>(3,3) = 5.0 * Eigen::Matrix3d::Identity();		//velocity cov
-	state->P.block<3,3>(6,6) = 0.04 * Eigen::Matrix3d::Identity();		//roll-pitch-yaw cov
-	state->P.block<3,3>(9,9) = 0.0004 * Eigen::Matrix3d::Identity();	//acceleration bias cov
-	state->P.block<3,3>(12,12) = 0.0004 * Eigen::Matrix3d::Identity();	//gyroscope bias cov
+void Initializer::reset(State* state) {
+	// restart ESKF sequence
+	imu_initialized_ = false;
+	uwb_initialized_ = false;
+	wheel_initialized_ = false;
+	eskf_initialized_ = false;
+	got_first_uwb_message_ = false;
+
+	imu_buffer_.clear();
+	uwb_buffer_.clear();
+	wheel_buffer_.clear();
+	uwb_average.setZero();
 
 	accel_x_mean = 0.0;
 	accel_y_mean = 0.0;
 	pitch_angle = 0.0;
 	roll_angle = 0.0;
+	uwb_starting_angle = 0.0;
+
+	state->P.block<3,3>(0,0) = 10.0 * Eigen::Matrix3d::Identity();		//position cov
+	state->P.block<3,3>(3,3) = 5.0 * Eigen::Matrix3d::Identity();		//velocity cov
+	state->P.block<3,3>(6,6) = 0.04 * Eigen::Matrix3d::Identity();		//roll-pitch-yaw cov
+	state->P.block<3,3>(9,9) = 0.0004 * Eigen::Matrix3d::Identity();	//acceleration bias cov
+	state->P.block<3,3>(12,12) = 0.0004 * Eigen::Matrix3d::Identity();	//gyroscope bias cov
 }
 
 void Initializer::Imu_initialize(ESKF_Localization::ImuDataPtr imu_data){
 	if(!got_first_uwb_message_){
 		return;
 	}
-
-	//if (uwb_initialized_){return;}magnetic is slower than imu, constantly update buffer
 
 	imu_buffer_.push_back(imu_data);
 	if (imu_buffer_.size() > imu_initialize_goal_){
@@ -51,7 +63,7 @@ void Initializer::Imu_initialize(ESKF_Localization::ImuDataPtr imu_data){
 	}
 }
 
-void Initializer::Uwb_initialize(ESKF_Localization::UwbPositionDataPtr uwb_data){
+void Initializer::Uwb_initialize(ESKF_Localization::UwbPositionDataPtr uwb_data, State* state){
 	got_first_uwb_message_ = true;
 
 	if (uwb_initialized_){return;}
@@ -59,14 +71,16 @@ void Initializer::Uwb_initialize(ESKF_Localization::UwbPositionDataPtr uwb_data)
 	if (uwb_buffer_.size() < uwb_initialize_goal_){
 		uwb_buffer_.push_back(uwb_data);
 	}else{
-		//compute lla_origin
 		uwb_average.setZero();
-		double uwb_orient_mean = 0.0;
+		uwb_starting_angle = 0.0;
 		for (ESKF_Localization::UwbPositionDataPtr uwb_d : uwb_buffer_){
 			uwb_average += uwb_d->z;
-			uwb_orient_mean += uwb_d->orient;
+			uwb_starting_angle += uwb_d->orient;
 		}
 		uwb_average /= uwb_initialize_goal_;
+		uwb_starting_angle /= uwb_initialize_goal_;			// get the average starting angle.
+		uwb_starting_angle *= 0.017453;						// 2 rad
+		state->G_R_I = getInitialRotation();				// G_R_I initialized by Initial angles
 		uwb_initialized_ = true;
 		ROS_INFO("[Initializer] Uwb initialized with %f, %f, %f", uwb_average.x(), uwb_average.y(), uwb_average.z());
 	}
@@ -89,10 +103,5 @@ void Initializer::Wheel_initialize(ESKF_Localization::WheelDataPtr wh_data){
 
 		wheel_initialized_ = true;
 	}
-}
-
-bool Initializer::is_initialized(){
-	eskf_initialized_ = imu_initialized_ && uwb_initialized_ && wheel_initialized_;
-	return eskf_initialized_;
 }
 }

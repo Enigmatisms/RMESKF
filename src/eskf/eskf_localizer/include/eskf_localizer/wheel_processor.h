@@ -9,7 +9,7 @@ class WheelProcessor{
 
 public:
 	WheelProcessor(Eigen::Matrix3d V);
-	void Wheel_correct(const WheelDataPtr MagData, State* state);
+	void Wheel_correct(const WheelDataPtr WhData, State* state);
 private:
 	Eigen::Matrix3d V_;				//covariance
 };

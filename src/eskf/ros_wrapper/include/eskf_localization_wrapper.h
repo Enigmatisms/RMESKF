@@ -8,7 +8,6 @@
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/NavSatFix.h>
 #include <tf/transform_broadcaster.h>
-#include <sensor_msgs/MagneticField.h>
 
 #define DRIFT_THRESHOLD 0.05		// 低于0.05的IMU加速度初始平均值不算零漂
 
@@ -21,6 +20,7 @@ public:
     void ImuCallback(const sensor_msgs::ImuConstPtr& imu_msg_ptr);
     void UwbPositionCallback(const serial_com::uwbConstPtr& uwb_msg_ptr);
     void WheelCallback(const serial_com::chassisConstPtr& wh_msg_ptr);
+	void reset();
 
 private:
 	ros::Subscriber imu_sub_;

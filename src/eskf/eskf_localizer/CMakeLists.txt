@@ -9,12 +9,12 @@ if(NOT Eigen3_FOUND)
 endif()
 
 # Add GeographicLib.
-add_subdirectory(third_party/GeographicLib)
+# add_subdirectory(third_party/GeographicLib)
 
 include_directories(
   include
   ${EIGEN3_INCLUDE_DIR}
-  third_party/GeographicLib/include
+  # third_party/GeographicLib/include
   ##only for testing
   ${catkin_INCLUDE_DIRS}
   ${CMAKE_CURRENT_SOURCE_DIR}/../../serial_com/include
@@ -37,6 +37,6 @@ target_link_libraries(
 
 target_link_libraries(eskf_localizer_lib
 	${EIGEN3_LIBS}
-	libGeographiccc
+	# libGeographiccc
 )
 

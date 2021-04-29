@@ -4,7 +4,7 @@ devel/
 
 *.db
 *.catkin_workspace
-# *.txt
+*.txt
 
 !.gitignore
 !.vscode/c_cpp_properties.json

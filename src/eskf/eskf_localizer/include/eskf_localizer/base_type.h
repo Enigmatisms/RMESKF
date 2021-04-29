@@ -38,6 +38,8 @@ struct State{
 	//Nominal states
 	Eigen::Vector3d G_p_I;			//Position of IMU frame(I) in global frame(G)
 	Eigen::Vector3d G_v_I;			//Velocity of IMU frame(I) in global frame(G)
+	// 没讲清楚，这里的G_R_I的意思是：IMU坐标系下的坐标如何转换到世界坐标系下 只需要左乘这个矩阵即可，比如UWB相对位置
+	// 所以G——R——I 刚好是IMU在世界坐标系下的旋转情况（世界如何旋转可以得到IMU（让两个坐标系重合））
 	Eigen::Matrix3d G_R_I;			//Rotation from IMU frame(I) to global frame(G)
 	Eigen::Vector3d ab;				//Accelerometer bias
 	Eigen::Vector3d wb;				//Gyroscope bias

@@ -28,6 +28,7 @@ public:
 	void processImuData(ImuDataPtr imu_data);
 	void processUwbData(UwbPositionDataPtr gps_data);
 	void processWheelData(WheelDataPtr wh_data);
+	void reset();
 
 	State* getState();
 	Eigen::Vector3d getUWBPos() const;

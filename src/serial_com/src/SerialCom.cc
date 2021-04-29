@@ -79,18 +79,7 @@ void SerialCom::sendGimbalInfo(){
     serial_com::uwb uwb;
     serial_com::chassis wh;
     sensor_msgs::Imu imu;
-<<<<<<< HEAD
     int serial_flag = getDataFromSerial(imu, wh, uwb);
-=======
-    sensor_msgs::MagneticField mag;
-    int serial_flag = getDataFromSerial(imu, mag, uwb);
-    if (ser_init == false) {
-        ser_start_time = std::chrono::system_clock::now().time_since_epoch().count() / 1e9;
-        ser_init = true;
-    }
-    double ser_interval = std::chrono::system_clock::now().time_since_epoch().count() / 1e9 - ser_start_time;
-    ser_freq << ser_interval << std::endl;
->>>>>>> 642c8cbda8418041d507cef869a20e3bc865519a
     imu_pub.publish(imu);
     wheel_pub.publish(wh);
     if (serial_flag == ALL_OK) {
@@ -132,7 +121,6 @@ bool SerialCom::receiveData(
     imu.linear_acceleration.z = float(tl.packet.accel[2]) / 1000.0 * 9.81;
 
     /// 轮速，从右下角开始顺时针1 2 3 4
-    // printf("Magnetic field: %d, %d, %d\n\n", tl.packet.magneto[0], tl.packet.magneto[1], tl.packet.magneto[2]);
     wh.v1 = float(tl.packet.wheels[0]) / 1000.0;
     wh.v2 = float(tl.packet.wheels[1]) / 1000.0;
     wh.v3 = float(tl.packet.wheels[2]) / 1000.0;

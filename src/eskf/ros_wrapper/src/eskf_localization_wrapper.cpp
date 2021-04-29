@@ -8,7 +8,6 @@
 
 ESKFLocalizationWrapper::ESKFLocalizationWrapper(ros::NodeHandle nh)
 {
-
 	//obtain constants from ros param
 	double am_noise, wm_noise, ab_noise, wb_noise;
 	double x, y, z;
@@ -46,6 +45,13 @@ ESKFLocalizationWrapper::ESKFLocalizationWrapper(ros::NodeHandle nh)
 	old_data_init = false;
 	old_angvel = 0.0;
 	start_time = 0.0;
+}
+
+void ESKFLocalizationWrapper::reset() {
+	old_accel.setZero();
+	old_data_init = false;
+	old_angvel = 0.0;
+	eskf_localizer_->reset();
 }
 
 ESKFLocalizationWrapper::~ESKFLocalizationWrapper()
